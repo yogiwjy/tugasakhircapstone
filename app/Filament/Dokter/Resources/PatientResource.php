@@ -14,6 +14,8 @@ class PatientResource extends Resource
     protected static ?string $model = Patient::class;
     protected static ?string $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Data Pasien';
+    protected static ?string $modelLabel = 'Pasien';
+    protected static ?string $pluralModelLabel = 'Pasien';
     
     public static function form(Form $form): Form
     {
@@ -21,13 +23,15 @@ class PatientResource extends Resource
             ->schema([
                 Forms\Components\TextInput::make('medical_record_number')
                     ->label('No. Rekam Medis')
-                    ->required(),
+                    ->required()
+                    ->unique(ignoreRecord: true),
                 Forms\Components\TextInput::make('name')
                     ->label('Nama Lengkap')
                     ->required(),
                 Forms\Components\DatePicker::make('birth_date')
                     ->label('Tanggal Lahir')
-                    ->required(),
+                    ->required()
+                    ->native(false),
                 Forms\Components\Select::make('gender')
                     ->label('Jenis Kelamin')
                     ->options([
@@ -37,9 +41,28 @@ class PatientResource extends Resource
                     ->required(),
                 Forms\Components\Textarea::make('address')
                     ->label('Alamat')
-                    ->required(),
+                    ->required()
+                    ->rows(3),
                 Forms\Components\TextInput::make('phone')
-                    ->label('No. Telepon'),
+                    ->label('No. Telepon')
+                    ->tel(),
+                Forms\Components\TextInput::make('emergency_contact')
+                    ->label('Kontak Darurat'),
+                Forms\Components\Select::make('blood_type')
+                    ->label('Golongan Darah')
+                    ->options([
+                        'A+' => 'A+',
+                        'A-' => 'A-',
+                        'B+' => 'B+',
+                        'B-' => 'B-',
+                        'AB+' => 'AB+',
+                        'AB-' => 'AB-',
+                        'O+' => 'O+',
+                        'O-' => 'O-',
+                    ]),
+                Forms\Components\Textarea::make('allergies')
+                    ->label('Alergi')
+                    ->rows(2),
             ]);
     }
 
@@ -48,15 +71,38 @@ class PatientResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('medical_record_number')
-                    ->label('No. RM'),
+                    ->label('No. RM')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('name')
-                    ->label('Nama Pasien'),
+                    ->label('Nama Pasien')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('gender')
+                    ->label('Jenis Kelamin')
+                    ->formatStateUsing(fn (string $state): string => $state === 'male' ? 'Laki-laki' : 'Perempuan')
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'male' ? 'info' : 'success'),
                 Tables\Columns\TextColumn::make('phone')
-                    ->label('Telepon'),
+                    ->label('Telepon')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Terdaftar')
+                    ->date('d/m/Y')
+                    ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('Lihat'),
+                Tables\Actions\EditAction::make()
+                    ->label('Edit'),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Hapus'),
+                ]),
             ]);
     }
 

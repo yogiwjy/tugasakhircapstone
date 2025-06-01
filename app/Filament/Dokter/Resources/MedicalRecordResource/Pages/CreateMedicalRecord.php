@@ -8,5 +8,10 @@ class CreateMedicalRecord extends CreateRecord
 {
     protected static string $resource = MedicalRecordResource::class;
 
-    protected static ?string $title = 'Rekam Medis';
+    protected static ?string $title = 'Buat Rekam Medis';
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

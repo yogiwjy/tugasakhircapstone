@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Resources\CounterResource\Pages;
 
 use App\Filament\Resources\CounterResource;

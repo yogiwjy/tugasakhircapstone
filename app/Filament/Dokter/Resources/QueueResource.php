@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Filament\Dokter\Resources;
 
 use App\Filament\Dokter\Resources\QueueResource\Pages;
@@ -17,6 +16,7 @@ class QueueResource extends Resource
     protected static ?string $navigationIcon = 'heroicon-o-queue-list';
     protected static ?string $navigationLabel = 'Kelola Antrian';
     protected static ?string $modelLabel = 'Antrian';
+    protected static ?string $pluralModelLabel = 'Antrian';
 
     public static function canCreate(): bool
     {
@@ -36,11 +36,18 @@ class QueueResource extends Resource
                     ->sortable(),
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Nama Pasien')
-                    ->default('Ahmad Suryadi')
+                    ->default('Pasien Walk-in')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status Antrian')
                     ->badge()
+                    ->formatStateUsing(fn (string $state): string => match ($state) {
+                        'waiting' => 'Menunggu',
+                        'serving' => 'Dilayani',
+                        'finished' => 'Selesai',
+                        'canceled' => 'Dibatalkan',
+                        default => $state,
+                    })
                     ->color(fn (string $state): string => match ($state) {
                         'waiting' => 'warning',
                         'serving' => 'success',
@@ -50,11 +57,11 @@ class QueueResource extends Resource
                     }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Waktu Daftar')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('called_at')
                     ->label('Waktu Dipanggil')
-                    ->dateTime()
+                    ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -64,31 +71,39 @@ class QueueResource extends Resource
                     ->icon('heroicon-o-megaphone')
                     ->color('warning')
                     ->visible(fn (Queue $record) => $record->status === 'waiting')
-                    ->action(function (Queue $record, $livewire) {
+                    ->action(function (Queue $record) {
                         $record->update([
                             'status' => 'serving',
                             'called_at' => now(),
                         ]);
 
-                        $livewire->dispatchBrowserEvent('queue-called', [
-                            'message' => "Nomor antrian {$record->number} silakan menuju ruang periksa",
-                        ]);
+                        $message = "Nomor antrian {$record->number} silakan menuju ruang periksa";
 
+                        // Kirim notifikasi sukses
                         Notification::make()
                             ->title("Antrian {$record->number} berhasil dipanggil!")
                             ->success()
                             ->send();
+
+                        // Set session untuk JavaScript
+                        session()->flash('queue_called', [
+                            'number' => $record->number,
+                            'message' => $message
+                        ]);
+
+                        // Return redirect untuk trigger JavaScript
+                        return redirect()->back();
                     })
                     ->requiresConfirmation()
                     ->modalHeading('Panggil Antrian')
                     ->modalDescription(fn (Queue $record) => "Apakah Anda yakin ingin memanggil antrian {$record->number}?"),
 
                 Action::make('serve')
-                    ->label('Layani')
-                    ->icon('heroicon-o-check-circle')
+                    ->label('Buat Rekam Medis')
+                    ->icon('heroicon-o-document-plus')
                     ->color('success')
                     ->visible(fn (Queue $record) => $record->status === 'serving')
-                    ->action(fn (Queue $record) => redirect()->route('filament.dokter.resources.medical-records.create', [
+                    ->url(fn (Queue $record) => route('filament.dokter.resources.medical-records.create', [
                         'queue_id' => $record->id,
                         'patient_id' => $record->patient_id,
                     ])),
@@ -108,7 +123,8 @@ class QueueResource extends Resource
                     ->requiresConfirmation()
                     ->modalHeading('Selesaikan Antrian'),
 
-                Tables\Actions\ViewAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('Lihat'),
             ])
             ->defaultSort('created_at', 'desc')
             ->poll('3s');

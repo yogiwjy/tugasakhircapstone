@@ -6,8 +6,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreatePatient extends CreateRecord
 {
-
-    protected static ?string $title = 'Buat Pasien';
-
     protected static string $resource = PatientResource::class;
+
+    protected static ?string $title = 'Tambah Pasien Baru';
 }

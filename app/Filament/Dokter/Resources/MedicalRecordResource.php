@@ -15,6 +15,8 @@ class MedicalRecordResource extends Resource
     protected static ?string $model = MedicalRecord::class;
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
     protected static ?string $navigationLabel = 'Rekam Medis';
+    protected static ?string $modelLabel = 'Rekam Medis';
+    protected static ?string $pluralModelLabel = 'Rekam Medis';
     
     public static function form(Form $form): Form
     {
@@ -23,16 +25,38 @@ class MedicalRecordResource extends Resource
                 Forms\Components\Select::make('patient_id')
                     ->label('Pasien')
                     ->relationship('patient', 'name')
-                    ->required(),
+                    ->required()
+                    ->searchable()
+                    ->preload(),
                 Forms\Components\Textarea::make('chief_complaint')
                     ->label('Keluhan Utama')
-                    ->required(),
+                    ->required()
+                    ->rows(3),
+                Forms\Components\Textarea::make('history_of_present_illness')
+                    ->label('Riwayat Penyakit Sekarang')
+                    ->rows(3),
+                Forms\Components\Textarea::make('physical_examination')
+                    ->label('Pemeriksaan Fisik')
+                    ->rows(3),
+                Forms\Components\TextInput::make('vital_signs')
+                    ->label('Tanda Vital')
+                    ->placeholder('Tekanan Darah, Nadi, Suhu, dll'),
                 Forms\Components\Textarea::make('diagnosis')
                     ->label('Diagnosis')
-                    ->required(),
+                    ->required()
+                    ->rows(2),
                 Forms\Components\Textarea::make('treatment_plan')
                     ->label('Rencana Pengobatan')
-                    ->required(),
+                    ->required()
+                    ->rows(3),
+                Forms\Components\Textarea::make('prescription')
+                    ->label('Resep Obat')
+                    ->rows(3),
+                Forms\Components\Textarea::make('additional_notes')
+                    ->label('Catatan Tambahan')
+                    ->rows(2),
+                Forms\Components\DatePicker::make('follow_up_date')
+                    ->label('Tanggal Kontrol'),
                 Forms\Components\Hidden::make('doctor_id')
                     ->default(Auth::id()),
                 Forms\Components\Select::make('queue_id')
@@ -45,9 +69,9 @@ class MedicalRecordResource extends Resource
                             $queue = \App\Models\Queue::find($state);
                             if ($queue && $queue->patient_id) {
                                 $set('patient_id', $queue->patient_id);
-            }
-        }
-    }),
+                            }
+                        }
+                    }),
             ]);
     }
 
@@ -56,20 +80,34 @@ class MedicalRecordResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('patient.name')
-                    ->label('Nama Pasien'),
+                    ->label('Nama Pasien')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('chief_complaint')
-                    ->label('Keluhan')
-                    ->limit(50),
+                    ->label('Keluhan Utama')
+                    ->limit(50)
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('diagnosis')
                     ->label('Diagnosis')
-                    ->limit(50),
+                    ->limit(50)
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Tanggal')
-                    ->date(),
+                    ->label('Tanggal Pemeriksaan')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
             ])
+            ->defaultSort('created_at', 'desc')
             ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make()
+                    ->label('Lihat'),
+                Tables\Actions\EditAction::make()
+                    ->label('Edit'),
+            ])
+            ->bulkActions([
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make()
+                        ->label('Hapus'),
+                ]),
             ]);
     }
 

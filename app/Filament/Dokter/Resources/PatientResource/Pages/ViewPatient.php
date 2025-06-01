@@ -7,14 +7,15 @@ use Filament\Resources\Pages\ViewRecord;
 
 class ViewPatient extends ViewRecord
 {
-
-    protected static ?string $title = 'Lihat Pasien';
     protected static string $resource = PatientResource::class;
+
+    protected static ?string $title = 'Detail Pasien';
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
+            Actions\EditAction::make()
+                ->label('Edit'),
         ];
     }
 }

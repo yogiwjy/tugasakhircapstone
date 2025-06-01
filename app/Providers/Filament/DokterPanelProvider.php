@@ -5,7 +5,6 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
-use Filament\Pages;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
@@ -26,12 +25,13 @@ class DokterPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Green,
             ])
-            ->login() // PASTIKAN INI ADA
-            ->brandName('KLINIK PRATAMA HADIANA SEHAT') // TAMBAH INI
+            ->login()
+            ->authGuard('dokter')
+            ->brandName('KLINIK PRATAMA HADIANA SEHAT')
             ->discoverResources(in: app_path('Filament/Dokter/Resources'), for: 'App\\Filament\\Dokter\\Resources')
             ->discoverPages(in: app_path('Filament/Dokter/Pages'), for: 'App\\Filament\\Dokter\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                \App\Filament\Dokter\Pages\Dashboard::class,
             ])
             ->middleware([
                 EncryptCookies::class,
@@ -46,8 +46,7 @@ class DokterPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
-                // SEMENTARA COMMENT MIDDLEWARE CUSTOM DULU
-                // \App\Http\Middleware\EnsureDokterRole::class,
+                \App\Http\Middleware\EnsureDokterRole::class,
             ]);
     }
 }

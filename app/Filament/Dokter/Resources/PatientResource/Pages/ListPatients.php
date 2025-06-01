@@ -9,13 +9,13 @@ class ListPatients extends ListRecords
 {
     protected static string $resource = PatientResource::class;
 
-    protected static ?string $title = 'Pasien';
-
+    protected static ?string $title = 'Daftar Pasien';
 
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Tambah Pasien'),
         ];
     }
 }

@@ -9,10 +9,13 @@ class ViewMedicalRecord extends ViewRecord
 {
     protected static string $resource = MedicalRecordResource::class;
 
+    protected static ?string $title = 'Detail Rekam Medis';
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\EditAction::make(),
+            Actions\EditAction::make()
+                ->label('Edit'),
         ];
     }
 }

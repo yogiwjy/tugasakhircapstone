@@ -9,11 +9,15 @@ class EditMedicalRecord extends EditRecord
 {
     protected static string $resource = MedicalRecordResource::class;
 
+    protected static ?string $title = 'Edit Rekam Medis';
+
     protected function getHeaderActions(): array
     {
         return [
-            Actions\ViewAction::make(),
-            Actions\DeleteAction::make(),
+            Actions\ViewAction::make()
+                ->label('Lihat'),
+            Actions\DeleteAction::make()
+                ->label('Hapus'),
         ];
     }
 }

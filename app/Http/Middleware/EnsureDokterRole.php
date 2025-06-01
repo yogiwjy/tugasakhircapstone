@@ -9,8 +9,9 @@ class EnsureDokterRole
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!Auth::check() || !Auth::user()->isDokter()) {
-            Auth::logout();
+        // Gunakan guard dokter
+        if (!Auth::guard('dokter')->check() || Auth::guard('dokter')->user()->role !== 'dokter') {
+            Auth::guard('dokter')->logout();
             return redirect()->route('filament.dokter.auth.login')
                 ->withErrors(['email' => 'Akses ditolak. Hanya dokter yang diizinkan.']);
         }
