@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Services;
 
 use App\Models\Counter;
@@ -8,7 +7,6 @@ use App\Models\Service;
 
 class QueueService
 {
-
     public function addQueue($serviceId)
     {
         $number = $this->generateNumber($serviceId);
@@ -29,9 +27,7 @@ class QueueService
             ->first();
 
         $currentDate = now()->format('Y-m-d');
-
         $lastQueueDate = $lastQueue ? $lastQueue->created_at->format('Y-m-d') : null;
-
         $isSameDate = $currentDate === $lastQueueDate;
 
         $lastQueueNumber = $lastQueue ? intval(
@@ -39,7 +35,6 @@ class QueueService
         ) : 0;
 
         $maximumNumber = pow(10, $service->padding) - 1;
-
         $isMaximumNumber = $lastQueueNumber === $maximumNumber;
 
         if ($isSameDate && !$isMaximumNumber) {
@@ -51,12 +46,11 @@ class QueueService
         return $service->prefix . str_pad($newQueueNumber, $service->padding, "0", STR_PAD_LEFT);
     }
 
-    public function getNextQueue($counterId)
-
+    public function callNextQueue($counterId)
     {
         $counter = Counter::findOrFail($counterId);
 
-        return Queue::where('status', 'waiting')
+        $nextQueue = Queue::where('status', 'waiting')
             ->where('service_id', $counter->service_id)
             ->where(function ($query) use ($counterId) {
                 $query->whereNull('counter_id')->orWhere('counter_id', $counterId);
@@ -64,11 +58,6 @@ class QueueService
             ->whereDate('created_at', now()->format('Y-m-d'))
             ->orderBy('id')
             ->first();
-    }
-
-public function callNextQueue($counterId)
-    {
-        $nextQueue = $this->getNextQueue($counterId);
 
         if ($nextQueue && !$nextQueue->counter_id) {
             $nextQueue->update([
@@ -106,7 +95,7 @@ public function callNextQueue($counterId)
 
     public function cancelQueue(Queue $queue)
     {
-        if ($queue->status !== 'waiting') {
+        if (!in_array($queue->status, ['waiting', 'serving'])) {
             return;
         }
 
