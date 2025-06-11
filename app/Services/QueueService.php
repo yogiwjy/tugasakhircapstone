@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\Counter;
 use App\Models\Queue;
 use App\Models\Service;
+use App\Models\Patient;
 
 class QueueService
 {
@@ -11,11 +12,40 @@ class QueueService
     {
         $number = $this->generateNumber($serviceId);
 
+        // YANG BARU - AUTO CREATE PATIENT DENGAN DATA MINIMAL
+        $patient = $this->createTemporaryPatient($serviceId, $number);
+
         return Queue::create([
             'service_id' => $serviceId,
+            'patient_id' => $patient->id, // Link ke patient yang baru dibuat
             'number' => $number,
             'status' => 'waiting',
         ]);
+    }
+
+    // FUNCTION BARU - CREATE PATIENT TEMPORARY
+    private function createTemporaryPatient($serviceId, $queueNumber)
+    {
+        $service = Service::find($serviceId);
+        $serviceName = $service ? $service->name : 'Unknown';
+        
+        // Generate nama temporary berdasarkan service dan nomor antrian
+        $tempName = "Pasien {$serviceName} - {$queueNumber}";
+        
+        // Buat patient baru dengan data minimal
+        $patient = Patient::create([
+            'medical_record_number' => Patient::generateMedicalRecordNumber(),
+            'name' => $tempName,
+            'birth_date' => '1990-01-01', // Default birth date
+            'gender' => 'male', // Default gender, bisa diubah nanti
+            'address' => 'Alamat belum diisi', // Default address
+            'phone' => null, // Kosong dulu
+            'emergency_contact' => null, // Kosong dulu
+            'blood_type' => null, // Kosong dulu
+            'allergies' => null, // Kosong dulu
+        ]);
+
+        return $patient;
     }
 
     public function generateNumber($serviceId)

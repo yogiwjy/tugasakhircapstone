@@ -40,11 +40,20 @@ class QueueResource extends Resource
                     ->badge()
                     ->color('info'),
                     
+                // YANG DIUBAH - Kolom pasien dengan RM
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Nama Pasien')
                     ->default('Pasien Walk-in')
                     ->searchable()
-                    ->limit(30),
+                    ->limit(25)
+                    ->formatStateUsing(function ($record) {
+                        if ($record->patient_id && $record->patient) {
+                            return $record->patient->name . 
+                                   "\n(" . $record->patient->medical_record_number . ")";
+                        }
+                        return 'Pasien Walk-in';
+                    })
+                    ->wrap(),
                     
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status Antrian')
@@ -105,17 +114,14 @@ class QueueResource extends Resource
                     ->visible(fn (Queue $record) => $record->status === 'waiting')
                     ->action(function (Queue $record, $livewire) {
                         try {
-                            // Update status antrian
                             $record->update([
                                 'status' => 'serving',
                                 'called_at' => now(),
                             ]);
 
-                            // Tentukan pesan berdasarkan konteks
                             $serviceName = $record->service->name ?? 'ruang periksa';
                             $message = "Nomor antrian {$record->number} silakan menuju {$serviceName}";
 
-                            // Kirim notifikasi sukses
                             Notification::make()
                                 ->title("Antrian {$record->number} berhasil dipanggil!")
                                 ->body($message)
@@ -123,10 +129,8 @@ class QueueResource extends Resource
                                 ->duration(5000)
                                 ->send();
 
-                            // Dispatch event untuk trigger audio
                             $livewire->dispatch('queue-called', $message);
                             
-                            // Set session sebagai fallback
                             session()->flash('queue_called', [
                                 'number' => $record->number,
                                 'message' => $message
@@ -146,16 +150,30 @@ class QueueResource extends Resource
                     ->modalSubmitActionLabel('Ya, Panggil')
                     ->modalCancelActionLabel('Batal'),
 
-                Action::make('serve')
-                    ->label('Buat Rekam Medis')
+                // YANG BARU - TOMBOL REKAM MEDIS (INI YANG PALING PENTING!)
+                Action::make('create_medical_record')
+                    ->label('Rekam Medis')
                     ->icon('heroicon-o-document-plus')
                     ->color('success')
                     ->size('sm')
-                    ->visible(fn (Queue $record) => $record->status === 'serving')
-                    ->url(fn (Queue $record) => route('filament.dokter.resources.medical-records.create', [
-                        'queue_id' => $record->id,
-                        'patient_id' => $record->patient_id,
-                    ])),
+                    ->visible(fn (Queue $record) => in_array($record->status, ['serving', 'waiting']))
+                    ->action(function (Queue $record) {
+                        // Jika pasien walk-in (tidak ada patient_id), redirect ke form kosong
+                        if (!$record->patient_id) {
+                            return redirect()->route('filament.dokter.resources.medical-records.create');
+                        }
+
+                        // Jika ada patient_id, redirect dengan parameter untuk auto-populate
+                        return redirect()->route('filament.dokter.resources.medical-records.create', [
+                            'patient_id' => $record->patient_id,
+                            'queue_number' => $record->number,
+                            'service' => $record->service->name ?? null,
+                        ]);
+                    })
+                    ->tooltip(fn (Queue $record) => $record->patient_id 
+                        ? "Buat rekam medis untuk {$record->patient->name}" 
+                        : "Buat rekam medis baru"
+                    ),
 
                 Action::make('finish')
                     ->label('Selesai')
@@ -206,11 +224,9 @@ class QueueResource extends Resource
                                     $serviceName = $record->service->name ?? 'ruang periksa';
                                     $message = "Nomor antrian {$record->number} silakan menuju {$serviceName}";
                                     
-                                    // Dispatch audio dengan delay
                                     $livewire->dispatch('queue-called', $message);
                                     $called++;
                                     
-                                    // Delay between calls
                                     if ($called < count($records)) {
                                         sleep(2);
                                     }

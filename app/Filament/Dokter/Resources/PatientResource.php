@@ -136,7 +136,13 @@ class PatientResource extends Resource
                     ->searchable()
                     ->sortable()
                     ->weight('semibold')
-                    ->limit(30),
+                    ->limit(30)
+                    // YANG BARU - Highlight pasien temporary
+                    ->color(fn (Patient $record) => 
+                        str_contains($record->name, 'Pasien ') && str_contains($record->name, ' - ') 
+                            ? 'warning' 
+                            : null
+                    ),
                     
                 Tables\Columns\TextColumn::make('birth_date')
                     ->label('Tanggal Lahir')
@@ -166,11 +172,34 @@ class PatientResource extends Resource
                     ->copyMessage('Nomor telepon disalin!')
                     ->toggleable(),
                     
-                Tables\Columns\TextColumn::make('blood_type')
-                    ->label('Gol. Darah')
+                // YANG BARU - Status Kolom untuk identifikasi pasien temporary
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->state(function (Patient $record): string {
+                        // Check if it's a temporary patient
+                        if (str_contains($record->name, 'Pasien ') && str_contains($record->name, ' - ')) {
+                            return 'Data Belum Lengkap';
+                        }
+                        
+                        // Check if basic data is complete
+                        if (empty($record->phone) || $record->address === 'Alamat belum diisi') {
+                            return 'Data Kurang Lengkap';
+                        }
+                        
+                        return 'Data Lengkap';
+                    })
                     ->badge()
-                    ->color('warning')
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->color(function (Patient $record): string {
+                        if (str_contains($record->name, 'Pasien ') && str_contains($record->name, ' - ')) {
+                            return 'danger';
+                        }
+                        
+                        if (empty($record->phone) || $record->address === 'Alamat belum diisi') {
+                            return 'warning';
+                        }
+                        
+                        return 'success';
+                    }),
                     
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Terdaftar')
@@ -197,16 +226,38 @@ class PatientResource extends Resource
                     ])
                     ->multiple(),
                     
-                Tables\Filters\Filter::make('has_allergies')
-                    ->label('Memiliki Alergi')
-                    ->query(fn ($query) => $query->whereNotNull('allergies')->where('allergies', '!=', '')),
+                // YANG BARU - Filter berdasarkan status data
+                Tables\Filters\Filter::make('incomplete_data')
+                    ->label('Data Belum Lengkap')
+                    ->query(fn ($query) => $query->where('name', 'LIKE', 'Pasien %')
+                        ->where('name', 'LIKE', '% - %')),
+                        
+                Tables\Filters\Filter::make('missing_info')
+                    ->label('Info Kurang Lengkap')
+                    ->query(fn ($query) => $query->where(function ($q) {
+                        $q->whereNull('phone')
+                          ->orWhere('address', 'Alamat belum diisi')
+                          ->orWhereNull('emergency_contact');
+                    })),
             ])
             ->actions([
                 Tables\Actions\ActionGroup::make([
                     Tables\Actions\ViewAction::make()
                         ->label('Lihat'),
+                        
                     Tables\Actions\EditAction::make()
                         ->label('Edit'),
+                        
+                    // YANG BARU - Quick action untuk melengkapi data
+                    Tables\Actions\Action::make('complete_data')
+                        ->label('Lengkapi Data')
+                        ->icon('heroicon-o-pencil-square')
+                        ->color('warning')
+                        ->visible(fn (Patient $record) => 
+                            str_contains($record->name, 'Pasien ') && str_contains($record->name, ' - ')
+                        )
+                        ->url(fn (Patient $record) => static::getUrl('edit', ['record' => $record])),
+                        
                     Tables\Actions\Action::make('create_medical_record')
                         ->label('Buat Rekam Medis')
                         ->icon('heroicon-o-document-plus')
@@ -231,7 +282,6 @@ class PatientResource extends Resource
                         ->action(function ($records) {
                             $mrns = $records->pluck('medical_record_number', 'name')->toArray();
                             
-                            // Simple export logic - bisa dikembangkan lebih lanjut
                             $content = "Daftar Nomor Rekam Medis\n\n";
                             foreach ($mrns as $name => $mrn) {
                                 $content .= "{$mrn} - {$name}\n";
