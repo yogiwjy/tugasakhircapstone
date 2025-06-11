@@ -25,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         FilamentAsset::register([
             Js::make('thermal-printer', asset('js/thermal-printer.js')),
             Js::make('call-queue', asset('js/call-queue.js')),
+            Js::make('queue-audio', asset('js/queue-audio.js')), // Audio handler global
         ]);
     }   
 }
