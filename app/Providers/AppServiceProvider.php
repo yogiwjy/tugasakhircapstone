@@ -22,10 +22,9 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        FilamentAsset::register([
+         FilamentAsset::register([
             Js::make('thermal-printer', asset('js/thermal-printer.js')),
-            Js::make('call-queue', asset('js/call-queue.js')),
-            Js::make('queue-audio', asset('js/queue-audio.js')), // Audio handler global
+            Js::make('queue-audio', asset('js/queue-audio.js')), // Only this one
         ]);
     }   
 }
