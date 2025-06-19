@@ -11,6 +11,15 @@ class EditMedicalRecord extends EditRecord
 
     protected static ?string $title = 'Edit Rekam Medis';
 
+    // Override method untuk mengatur form actions
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            $this->getCancelFormAction(),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

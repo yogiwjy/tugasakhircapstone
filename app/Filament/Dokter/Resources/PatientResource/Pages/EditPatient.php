@@ -11,6 +11,15 @@ class EditPatient extends EditRecord
 
     protected static ?string $title = 'Edit Data Pasien';
 
+    // Override method untuk mengatur form actions
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getSaveFormAction(),
+            $this->getCancelFormAction(),
+        ];
+    }
+
     protected function getHeaderActions(): array
     {
         return [

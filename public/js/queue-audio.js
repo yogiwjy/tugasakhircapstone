@@ -1,37 +1,30 @@
+// File: public/js/queue-audio.js
+// SISTEM AUDIO UNTUK PANEL ADMIN (Global System - tetap seperti sebelumnya)
+
 /**
- * Queue Audio System - ALWAYS READY VERSION
- * File: public/js/queue-audio.js
- * 
- * Audio selalu siap tanpa perlu klik aktivasi atau user interaction
- * Auto-initialize di background secara silent
+ * Queue Audio System - ALWAYS READY VERSION untuk PANEL ADMIN
  */
 
-// ================== GLOBAL STATE MANAGEMENT ==================
-window.QueueAudioState = {
+// Global state untuk Admin Panel
+window.AdminAudioState = {
     isInitialized: false,
     isPlaying: false,
     lastMessage: null,
-    lastPlayTime: null,
     voices: [],
-    preferredVoice: null,
-    silentMode: true, // Always run in silent mode
-    autoRetryCount: 0,
-    maxAutoRetries: 5
+    preferredVoice: null
 };
 
-// ================== CORE AUDIO CLASS ==================
-window.QueueAudio = {
-    // Check if audio is supported
+// Sistem Audio untuk Panel Admin
+window.AdminQueueAudio = {
     isSupported() {
         return 'speechSynthesis' in window;
     },
 
-    // Silent auto-initialization (no user interaction required)
     async initializeAudio() {
-        const state = window.QueueAudioState;
+        const state = window.AdminAudioState;
         
         if (!this.isSupported()) {
-            console.warn('Speech synthesis not supported in this browser');
+            console.warn('Speech synthesis not supported');
             return false;
         }
 
@@ -40,38 +33,22 @@ window.QueueAudio = {
         }
 
         try {
-            // Load voices silently
             await this._waitForVoices();
-            
-            // Silent test (no actual audio output)
             await this._silentTest();
             
             state.isInitialized = true;
-            console.log('🔊 Audio system ready (silent mode)');
-            
+            console.log('🔊 Admin Panel Audio - Ready');
             return true;
             
         } catch (error) {
-            console.warn('Silent audio initialization failed:', error.message);
-            
-            // Auto-retry mechanism
-            if (state.autoRetryCount < state.maxAutoRetries) {
-                state.autoRetryCount++;
-                console.log(`🔄 Auto-retry ${state.autoRetryCount}/${state.maxAutoRetries}`);
-                
-                setTimeout(() => {
-                    this.initializeAudio();
-                }, 2000 * state.autoRetryCount); // Exponential backoff
-            }
-            
+            console.warn('Admin audio initialization failed:', error.message);
             return false;
         }
     },
 
-    // Wait for voices with multiple strategies
     _waitForVoices(timeout = 5000) {
         return new Promise((resolve) => {
-            const state = window.QueueAudioState;
+            const state = window.AdminAudioState;
             let resolved = false;
             
             const checkVoices = () => {
@@ -80,46 +57,21 @@ window.QueueAudio = {
                 const voices = speechSynthesis.getVoices();
                 if (voices.length > 0) {
                     state.voices = voices;
-                    
-                    // Find best voice (Indonesian first, then any)
                     state.preferredVoice = voices.find(voice => 
-                        voice.lang.includes('id') || 
-                        voice.name.toLowerCase().includes('indonesia')
-                    ) || voices.find(voice => 
-                        voice.lang.includes('en') || voice.default
+                        voice.lang.includes('id') || voice.name.toLowerCase().includes('indonesia')
                     ) || voices[0];
                     
-                    console.log(`🎤 Loaded ${voices.length} voices, using: ${state.preferredVoice?.name || 'default'}`);
+                    console.log(`🎤 Admin - Loaded ${voices.length} voices`);
                     resolved = true;
                     resolve();
                 }
             };
 
-            // Multiple strategies to get voices
-            checkVoices(); // Immediate check
-            speechSynthesis.onvoiceschanged = checkVoices; // Event listener
+            checkVoices();
+            speechSynthesis.onvoiceschanged = checkVoices;
             
-            // Force voice loading
-            if (speechSynthesis.getVoices().length === 0) {
-                // Trigger voice loading by creating a silent utterance
-                const utterance = new SpeechSynthesisUtterance('');
-                utterance.volume = 0;
-                speechSynthesis.speak(utterance);
-                speechSynthesis.cancel();
-            }
-            
-            // Polling fallback
-            const pollInterval = setInterval(() => {
-                if (!resolved) {
-                    checkVoices();
-                }
-            }, 200);
-            
-            // Always resolve after timeout
             setTimeout(() => {
                 if (!resolved) {
-                    clearInterval(pollInterval);
-                    console.log('🎤 Voice loading timeout, proceeding anyway');
                     resolved = true;
                     resolve();
                 }
@@ -127,398 +79,112 @@ window.QueueAudio = {
         });
     },
 
-    // Silent test that doesn't trigger autoplay restrictions
     _silentTest() {
         return new Promise((resolve) => {
             try {
-                // Create completely silent utterance for testing
-                const utterance = new SpeechSynthesisUtterance(' '); // Single space
+                const utterance = new SpeechSynthesisUtterance(' ');
                 utterance.volume = 0;
-                utterance.rate = 10; // Very fast
-                utterance.pitch = 0.1;
-                
+                utterance.rate = 10;
                 utterance.onend = () => resolve();
-                utterance.onerror = () => resolve(); // Don't fail on test errors
+                utterance.onerror = () => resolve();
                 
-                speechSynthesis.cancel();
                 speechSynthesis.speak(utterance);
-                
-                // Quick timeout
                 setTimeout(resolve, 100);
-                
             } catch (error) {
-                resolve(); // Always resolve, don't block initialization
+                resolve();
             }
         });
     },
 
-    // Enhanced message processing
-    _processMessage(message) {
-        if (!message) return null;
-        
-        let processedMessage = '';
-        
-        try {
-            if (typeof message === 'string') {
-                processedMessage = message.trim();
-            } else if (typeof message === 'object') {
-                if (message.message) {
-                    processedMessage = String(message.message).trim();
-                } else if (message.text) {
-                    processedMessage = String(message.text).trim();
-                } else if (Array.isArray(message) && message.length > 0) {
-                    processedMessage = String(message[0]).trim();
-                } else {
-                    // Try to extract any string value from object
-                    const values = Object.values(message);
-                    const stringValue = values.find(v => typeof v === 'string' && v.trim().length > 0);
-                    processedMessage = stringValue ? String(stringValue).trim() : '';
-                }
-            } else {
-                processedMessage = String(message).trim();
-            }
-        } catch (error) {
-            console.warn('Message processing error:', error);
-            processedMessage = '';
-        }
-        
-        return processedMessage.length > 0 ? processedMessage : null;
-    },
-
-    // Main speech function - always ready
     async playQueueAudio(message) {
-        const state = window.QueueAudioState;
+        const state = window.AdminAudioState;
         
-        // Process message
-        const processedMessage = this._processMessage(message);
-        if (!processedMessage) {
-            console.warn('Invalid or empty audio message:', message);
-            return false;
-        }
+        if (!message) return false;
 
-        // Auto-initialize if not ready (silent)
         if (!state.isInitialized) {
-            console.log('🔧 Auto-initializing audio system...');
-            const initSuccess = await this.initializeAudio();
-            if (!initSuccess) {
-                console.warn('Auto-initialization failed, attempting fallback...');
-                // Try emergency initialization
-                try {
-                    state.isInitialized = true; // Force enable
-                } catch (error) {
-                    console.error('Emergency audio initialization failed');
-                    return false;
-                }
-            }
-        }
-
-        // Stop any current audio
-        if (state.isPlaying) {
-            this.stop();
-            await this._delay(50);
+            await this.initializeAudio();
         }
 
         try {
             state.isPlaying = true;
-            state.lastMessage = processedMessage;
-            state.lastPlayTime = new Date().toISOString();
+            state.lastMessage = message;
             
-            // Create optimized utterance
-            const utterance = new SpeechSynthesisUtterance(processedMessage);
-            utterance.rate = 0.9; // Slightly slower for clarity
+            const utterance = new SpeechSynthesisUtterance(message);
+            utterance.rate = 0.9;
             utterance.volume = 1.0;
-            utterance.pitch = 1.0;
             utterance.lang = 'id-ID';
             
-            // Use best available voice
             if (state.preferredVoice) {
                 utterance.voice = state.preferredVoice;
             }
             
-            // Enhanced event handlers
             utterance.onstart = () => {
-                console.log('🔊 Audio playing:', processedMessage.substring(0, 50) + (processedMessage.length > 50 ? '...' : ''));
+                console.log('🔊 Admin Panel - Audio playing:', message.substring(0, 50) + '...');
             };
             
             utterance.onend = () => {
                 state.isPlaying = false;
-                console.log('✅ Audio completed');
+                console.log('✅ Admin Panel - Audio completed');
             };
             
             utterance.onerror = (error) => {
-                console.warn('Audio error:', error.error);
+                console.warn('Admin Panel Audio error:', error.error);
                 state.isPlaying = false;
-                
-                // Try emergency fallback
-                this._emergencyFallback(processedMessage);
             };
             
-            // Enhanced speech execution
-            speechSynthesis.cancel(); // Clear queue
-            await this._delay(10); // Very short delay
+            speechSynthesis.cancel();
             speechSynthesis.speak(utterance);
-            
-            // Backup check - if not speaking after delay, try again
-            setTimeout(() => {
-                if (state.isPlaying && !speechSynthesis.speaking && !speechSynthesis.pending) {
-                    console.warn('Speech not started, retrying...');
-                    speechSynthesis.speak(utterance);
-                }
-            }, 200);
             
             return true;
             
         } catch (error) {
-            console.error('Audio playback error:', error);
+            console.error('Admin Panel Audio error:', error);
             state.isPlaying = false;
-            this._emergencyFallback(processedMessage);
             return false;
         }
     },
 
-    // Emergency fallback for critical audio
-    _emergencyFallback(message) {
-        console.log('🚨 Emergency audio fallback for:', message);
-        
-        try {
-            // Try different approach
-            speechSynthesis.cancel();
-            
-            const utterance = new SpeechSynthesisUtterance(message);
-            utterance.rate = 1.0;
-            utterance.volume = 1.0;
-            utterance.lang = 'id-ID';
-            
-            // Don't use preferred voice in emergency mode
-            utterance.onend = () => {
-                window.QueueAudioState.isPlaying = false;
-            };
-            
-            speechSynthesis.speak(utterance);
-            
-        } catch (error) {
-            console.error('Emergency fallback also failed:', error);
-            // Last resort: show visual notification
-            this._showEmergencyNotification(message);
-        }
-    },
-
-    // Last resort visual notification
-    _showEmergencyNotification(message) {
-        const notification = document.createElement('div');
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #dc2626;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 16px;
-            z-index: 99999;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            animation: pulse 1s infinite;
-        `;
-        
-        notification.innerHTML = `🔊 PANGGILAN ANTRIAN: ${message}`;
-        document.body.appendChild(notification);
-        
-        // Auto remove
-        setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
-        }, 8000);
-        
-        // Add pulse animation
-        if (!document.getElementById('emergency-pulse-style')) {
-            const style = document.createElement('style');
-            style.id = 'emergency-pulse-style';
-            style.textContent = `
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.7; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    },
-
-    // Stop current speech
     stop() {
         try {
             speechSynthesis.cancel();
-            window.QueueAudioState.isPlaying = false;
+            window.AdminAudioState.isPlaying = false;
         } catch (error) {
-            console.warn('Error stopping speech:', error);
+            console.warn('Error stopping admin audio:', error);
         }
-    },
-
-    // Get status for debugging
-    getStatus() {
-        const state = window.QueueAudioState;
-        return {
-            isInitialized: state.isInitialized,
-            isPlaying: state.isPlaying,
-            speechSupported: this.isSupported(),
-            voicesCount: state.voices.length,
-            preferredVoice: state.preferredVoice?.name || 'None',
-            lastMessage: state.lastMessage,
-            lastPlayTime: state.lastPlayTime,
-            autoRetryCount: state.autoRetryCount,
-            speechSynthesisStatus: {
-                speaking: speechSynthesis?.speaking || false,
-                pending: speechSynthesis?.pending || false,
-                paused: speechSynthesis?.paused || false
-            }
-        };
-    },
-
-    // Force re-initialization
-    forceReinit() {
-        window.QueueAudioState.isInitialized = false;
-        window.QueueAudioState.autoRetryCount = 0;
-        return this.initializeAudio();
-    },
-
-    // Utility delay
-    _delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 };
 
-// ================== GLOBAL HELPER FUNCTIONS ==================
-
-// Main queue call handler
+// Global functions untuk Admin Panel
 window.handleQueueCall = function(message) {
-    console.log('📞 Queue call received:', typeof message === 'string' ? message.substring(0, 50) + '...' : typeof message);
-    return window.QueueAudio.playQueueAudio(message);
+    console.log('📞 Admin Panel - Queue call:', message);
+    return window.AdminQueueAudio.playQueueAudio(message);
 };
 
-// Backward compatibility
 window.playQueueAudio = function(message) {
-    return window.QueueAudio.playQueueAudio(message);
+    return window.AdminQueueAudio.playQueueAudio(message);
 };
 
 window.stopQueueAudio = function() {
-    return window.QueueAudio.stop();
+    return window.AdminQueueAudio.stop();
 };
 
-// Debug functions (console only)
-window.getAudioStatus = function() {
-    const status = window.QueueAudio.getStatus();
-    console.table(status);
-    return status;
-};
-
-window.testQueueCall = function(message = 'Test audio sistem antrian berfungsi normal') {
-    console.log('🧪 Manual test:', message);
-    return window.QueueAudio.playQueueAudio(message);
-};
-
-window.forceAudioReinit = function() {
-    console.log('🔄 Force reinitializing audio system...');
-    return window.QueueAudio.forceReinit();
-};
-
-// ================== AUTO-INITIALIZATION ==================
-
-// Aggressive auto-initialization strategies
-async function initializeAudioAggressively() {
-    console.log('🚀 Starting aggressive audio initialization...');
+// Auto-initialize untuk Admin Panel
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎵 Admin Panel Audio System - Loading...');
     
-    // Strategy 1: Immediate initialization
     setTimeout(async () => {
-        await window.QueueAudio.initializeAudio();
-    }, 100);
-    
-    // Strategy 2: After DOM ready
-    setTimeout(async () => {
-        if (!window.QueueAudioState.isInitialized) {
-            await window.QueueAudio.initializeAudio();
-        }
+        await window.AdminQueueAudio.initializeAudio();
     }, 1000);
-    
-    // Strategy 3: After voices should be loaded
-    setTimeout(async () => {
-        if (!window.QueueAudioState.isInitialized) {
-            await window.QueueAudio.initializeAudio();
-        }
-    }, 3000);
-    
-    // Strategy 4: Periodic retry
-    const retryInterval = setInterval(async () => {
-        if (!window.QueueAudioState.isInitialized && window.QueueAudioState.autoRetryCount < 3) {
-            await window.QueueAudio.initializeAudio();
-        }
-        
-        if (window.QueueAudioState.isInitialized || window.QueueAudioState.autoRetryCount >= 3) {
-            clearInterval(retryInterval);
-        }
-    }, 5000);
-}
+});
 
-// Enhanced Livewire event setup
-function setupLivewireEvents() {
+// Livewire events untuk Admin Panel
+document.addEventListener('livewire:initialized', function() {
     if (window.Livewire && window.Livewire.on) {
         window.Livewire.on('queue-called', function(message) {
             window.handleQueueCall(message);
         });
-        
-        console.log('✅ Livewire audio events registered');
-    } else {
-        setTimeout(setupLivewireEvents, 500);
-    }
-}
-
-// ================== INITIALIZATION SEQUENCE ==================
-
-// Start initialization immediately
-initializeAudioAggressively();
-
-// Document ready initialization
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🎵 Always Ready Audio System - Loaded');
-    
-    setupLivewireEvents();
-    
-    // Additional initialization attempt
-    setTimeout(async () => {
-        if (!window.QueueAudioState.isInitialized) {
-            console.log('🔧 Final initialization attempt...');
-            await window.QueueAudio.initializeAudio();
-        }
-    }, 2000);
-});
-
-// Livewire ready
-document.addEventListener('livewire:initialized', function() {
-    console.log('🔧 Livewire ready for always-ready audio');
-    setupLivewireEvents();
-});
-
-// Page visibility change handling
-document.addEventListener('visibilitychange', function() {
-    if (!document.hidden) {
-        // Page became visible, ensure audio is ready
-        setTimeout(async () => {
-            if (!window.QueueAudioState.isInitialized) {
-                await window.QueueAudio.initializeAudio();
-            }
-        }, 500);
+        console.log('✅ Admin Panel - Livewire events registered');
     }
 });
 
-// Window focus handling  
-window.addEventListener('focus', function() {
-    setTimeout(async () => {
-        if (!window.QueueAudioState.isInitialized) {
-            await window.QueueAudio.initializeAudio();
-        }
-    }, 200);
-});
-
-console.log('✅ Always Ready Audio System - Initialized');
-console.log('🔊 Audio will be automatically ready without any manual activation');
+console.log('✅ Admin Panel Audio System - Loaded');

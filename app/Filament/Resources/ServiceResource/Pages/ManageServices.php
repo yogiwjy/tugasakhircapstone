@@ -13,7 +13,8 @@ class ManageServices extends ManageRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->createAnother(false), // Disable "Create & Create Another"
         ];
     }
 }

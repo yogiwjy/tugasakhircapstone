@@ -40,7 +40,6 @@ class QueueResource extends Resource
                     ->badge()
                     ->color('info'),
                     
-                // YANG DIUBAH - Kolom pasien dengan RM
                 Tables\Columns\TextColumn::make('patient.name')
                     ->label('Nama Pasien')
                     ->default('Pasien Walk-in')
@@ -106,6 +105,7 @@ class QueueResource extends Resource
                     ->default(),
             ])
             ->actions([
+                // ===== TOMBOL PANGGIL (RESTORED) =====
                 Action::make('call')
                     ->label('Panggil')
                     ->icon('heroicon-o-megaphone')
@@ -150,7 +150,7 @@ class QueueResource extends Resource
                     ->modalSubmitActionLabel('Ya, Panggil')
                     ->modalCancelActionLabel('Batal'),
 
-                // YANG BARU - TOMBOL REKAM MEDIS (INI YANG PALING PENTING!)
+                // ===== TOMBOL REKAM MEDIS (TETAP ADA) =====
                 Action::make('create_medical_record')
                     ->label('Rekam Medis')
                     ->icon('heroicon-o-document-plus')
@@ -175,6 +175,7 @@ class QueueResource extends Resource
                         : "Buat rekam medis baru"
                     ),
 
+                // ===== TOMBOL SELESAI =====
                 Action::make('finish')
                     ->label('Selesai')
                     ->icon('heroicon-o-check')
@@ -202,46 +203,13 @@ class QueueResource extends Resource
                     ->modalHeading('Selesaikan Antrian')
                     ->modalDescription(fn (Queue $record) => "Tandai antrian {$record->number} sebagai selesai?"),
 
+                // ===== TOMBOL LIHAT =====
                 Tables\Actions\ViewAction::make()
                     ->label('Lihat')
                     ->size('sm'),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\BulkAction::make('call_multiple')
-                        ->label('Panggil Terpilih')
-                        ->icon('heroicon-o-megaphone')
-                        ->color('warning')
-                        ->action(function ($records, $livewire) {
-                            $called = 0;
-                            foreach ($records as $record) {
-                                if ($record->status === 'waiting') {
-                                    $record->update([
-                                        'status' => 'serving',
-                                        'called_at' => now(),
-                                    ]);
-                                    
-                                    $serviceName = $record->service->name ?? 'ruang periksa';
-                                    $message = "Nomor antrian {$record->number} silakan menuju {$serviceName}";
-                                    
-                                    $livewire->dispatch('queue-called', $message);
-                                    $called++;
-                                    
-                                    if ($called < count($records)) {
-                                        sleep(2);
-                                    }
-                                }
-                            }
-                            
-                            Notification::make()
-                                ->title("{$called} antrian berhasil dipanggil")
-                                ->success()
-                                ->send();
-                        })
-                        ->requiresConfirmation()
-                        ->modalHeading('Panggil Multiple Antrian')
-                        ->modalDescription('Panggil semua antrian yang dipilih? (dengan jeda 2 detik)'),
-                ]),
+                // Hapus bulk actions untuk panel dokter - fokus pada individual actions
             ])
             ->defaultSort('created_at', 'desc')
             ->poll('3s')

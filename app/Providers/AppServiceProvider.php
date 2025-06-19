@@ -1,4 +1,7 @@
 <?php
+// File: app/Providers/AppServiceProvider.php
+// Load audio system yang sesuai untuk setiap panel
+
 namespace App\Providers;
 
 use App\Services\QueueService;
@@ -22,9 +25,18 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-         FilamentAsset::register([
+        // LOAD AUDIO SYSTEM SESUAI PANEL
+        
+        // Untuk Panel Admin: Load queue-audio.js (global system)
+        // Untuk Panel Dokter: Audio system ada di header.blade.php (embedded)
+        // Untuk Kiosk/Public: Load thermal-printer.js
+        
+        FilamentAsset::register([
             Js::make('thermal-printer', asset('js/thermal-printer.js')),
-            Js::make('queue-audio', asset('js/queue-audio.js')), // Only this one
+            Js::make('queue-audio', asset('js/queue-audio.js')), // Hanya untuk admin panel
         ]);
+        
+        // Catatan: Panel dokter akan menggunakan sistem audio embedded di header.blade.php
+        // sehingga tidak perlu load queue-audio.js global
     }   
 }
