@@ -1,5 +1,5 @@
 {{-- File: resources/views/filament/pages/admin-dashboard.blade.php --}}
-{{-- SIMPLE CLEAN Dashboard - Filament Style untuk Admin --}}
+{{-- UPDATE: Tambah section Jadwal Dokter --}}
 
 <x-filament-panels::page>
 <div class="space-y-6">
@@ -51,8 +51,8 @@
         </div>
     </div>
 
-    {{-- Main Navigation Cards - Simple Grid --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {{-- Main Navigation Cards - Simple Grid dengan Jadwal Dokter --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         {{-- Kelola Loket --}}
         <a href="{{ url('/admin/counters') }}" 
            class="block bg-white rounded-lg shadow border hover:shadow-md transition-shadow">
@@ -88,6 +88,26 @@
                     <div class="ml-4">
                         <h3 class="text-lg font-medium text-gray-900">Antrian</h3>
                         <p class="text-sm text-gray-500">Kelola semua antrian</p>
+                    </div>
+                </div>
+            </div>
+        </a>
+
+        {{-- BARU: Jadwal Dokter --}}
+        <a href="{{ url('/admin/doctor-schedules') }}" 
+           class="block bg-white rounded-lg shadow border hover:shadow-md transition-shadow">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-emerald-100 rounded-md flex items-center justify-center">
+                            <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a1 1 0 011-1h6a1 1 0 011 1v4m4 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h8m-8-4h8m-8 4h8"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="ml-4">
+                        <h3 class="text-lg font-medium text-gray-900">Jadwal Dokter</h3>
+                        <p class="text-sm text-gray-500">Atur jadwal praktik dokter</p>
                     </div>
                 </div>
             </div>
